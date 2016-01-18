@@ -5,7 +5,6 @@ import sys
 import base64 
 import paho.mqtt.client as mqtt
 from Crypto.Cipher import AES
-from datetime import tzinfo, timedelta, datetime 
 execfile("loramote_msg2string.py")
 
 # Application Session Key
