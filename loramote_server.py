@@ -5,17 +5,25 @@ import sys
 import base64 
 import paho.mqtt.client as mqtt
 from Crypto.Cipher import AES
+from datetime import tzinfo, timedelta, datetime 
+from ConfigParser import SafeConfigParser
 execfile("loramote_msg2string.py")
-
-# Application Session Key
-APPSKEY="\x2b\x7e\x15\x16\x28\xae\xd2\xa6\xab\xf7\x15\x88\x09\xcf\x4f\x3d"
-# Network Session Key
-NETSKEY="\x2b\x7e\x15\x16\x28\xae\xd2\xa6\xab\xf7\x15\x88\x09\xcf\x4f\x3d"
 
 UDP_IP = "127.0.0.1"
 UDP_PORT = 1780
 
 DIR=0 # UPLINK
+
+def get_key(sensor_id, key_type):
+    parser = SafeConfigParser()
+    parser.read('./MoteSensor')
+
+    if key_type == 'AppKey':
+        key=parser.get(sensor_id, 'appkey')
+    else:
+        key=parser.get(sensor_id, 'netkey')    
+
+    return key
 
 def decrypt_appmsg(dev_addr, seq_nbr, appmsg):
     len_appmsg = len(appmsg) 
@@ -44,7 +52,8 @@ def decrypt_appmsg(dev_addr, seq_nbr, appmsg):
     
     IV = '\x00' * 16
     mode = AES.MODE_CBC
-    decryptor = AES.new(str(APPSKEY), mode, IV=IV)
+    app_key = get_key('Semtech_Sensor', 'AppKey')
+    decryptor = AES.new(str(app_key.decode('hex')), mode, IV=IV)
     sBlock = decryptor.encrypt(str(aBlock))
     sBlock_array = bytearray(sBlock)
     
