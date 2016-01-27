@@ -5,12 +5,12 @@ import sys
 import base64 
 import paho.mqtt.client as mqtt
 from Crypto.Cipher import AES
-execfile("loramote_msg2string.py")
+execfile("parking-sensor/fp_msg2string.py")
 
 # Application Session Key
-APPSKEY="\x2b\x7e\x15\x16\x28\xae\xd2\xa6\xab\xf7\x15\x88\x09\xcf\x4f\x3d"
+APPSKEY="\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 # Network Session Key
-NETSKEY="\x2b\x7e\x15\x16\x28\xae\xd2\xa6\xab\xf7\x15\x88\x09\xcf\x4f\x3d"
+NETSKEY="\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 
 UDP_IP = "127.0.0.1"
 UDP_PORT = 1780
@@ -39,8 +39,7 @@ def decrypt_appmsg(dev_addr, seq_nbr, appmsg):
     aBlock[11] = (seq_nbr >> 8) & 0xFF;
     aBlock[12] = (seq_nbr >> 16) & 0xFF;
     aBlock[13] = (seq_nbr >> 24) & 0xFF;
-    #aBlock[15] = 0;
-    aBlock[15] = 1;
+    aBlock[15] = 0;
     
     IV = '\x00' * 16
     mode = AES.MODE_CBC
@@ -92,29 +91,18 @@ def main():
         if len(data) > 12: 
             json_data = data[12:]
             ojson = json.loads(json_data)
-            #print ojson
             try:
                 for p in ojson["rxpk"]:
                     msg = base64.b64decode(p["data"])
-		    #print msg
 		    """
-		    Confirm data
+		    Unconfirm data
 		    """
-                    if msg.startswith("\x80") and len(msg) > 8:
-                        #print "MAC MSG: ",
-                        #for i in msg:
-                        #    print "%02x" % (ord(i)),
-                        #print "" 
+                    if msg.startswith("\x40") and len(msg) > 8:
                         byte_msg = bytearray(msg)
                         rx_dev_addr = (byte_msg[4] << 24) | (byte_msg[3] << 16) | byte_msg[2] << 8 | byte_msg[1]
                         seq_nbr =   byte_msg[7] << 8 | byte_msg[6]
                         appmsg = msg[9:-4]
-                        #print "APP MSG: ", 
-                        #for i in appmsg:
-                        #    print "%02x" % (ord(i)),
-                        #print "" 
                         fpappmsg = decrypt_appmsg(rx_dev_addr, seq_nbr, appmsg)
-			#mqtt_msg = msg2string(str(fpappmsg))
 
 			"""
 			Get some valuable value
@@ -123,12 +111,9 @@ def main():
 			rssi = ojson['rxpk'][0]['rssi']
 			devaddr = struct.unpack("!BBBB", buffer(msg[1:5]))
 			id = (devaddr[3] << 24) | (devaddr[2] << 16) | (devaddr[1] << 8) | devaddr[0]
-			#print "Mote ID : %x" % id
-			#print "TS: %s" % ts
-			#print "RSSI: %s" % rssi
-			mqtt_msg = "{\"Mote ID\":\"%x" % id + "\",\"ts\":\"%s" % ts + "\",\"RSSI\":\"%s" % rssi + msg2string(str(fpappmsg))
-			
-			#print mqtt_msg
+			mqtt_msg = msg2string(str(fpappmsg)) + "\",\"RSSI\":\"%s" % rssi + "\",\"TS\":\"%s" % ts + "\"}"
+			print mqtt_msg
+
 			"""
 			MQTT publishing
 			"""
