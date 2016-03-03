@@ -92,7 +92,7 @@ def main():
     Size (Bytes) :       4        |       1       |       2       |     0..15
     Frame Header : Device Address | Frame Control | Frame Counter | Frame Options
 
-    Size (Bytes)  :          7         |     6     |  5  |     4    |   3..0
+    Bit#          :          7         |     6     |  5  |     4    |   3..0
     Frame Control : Adaptive Data Rate | ADRACKReq | ACK | FPending | FOptsLen
     """
     print "Waiting LoRa messages ..."
