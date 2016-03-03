@@ -1,11 +1,11 @@
-#!/usr/bin/python -u 
+#!/usr/bin/python -u
 import socket
 import json
 import sys
-import base64 
+import base64
 import paho.mqtt.client as mqtt
 from Crypto.Cipher import AES
-from datetime import tzinfo, timedelta, datetime 
+from datetime import tzinfo, timedelta, datetime
 from ConfigParser import SafeConfigParser
 execfile("loramote_msg2string.py")
 
@@ -21,19 +21,19 @@ def get_key(sensor_id, key_type):
     if key_type == 'AppKey':
         key=parser.get(sensor_id, 'appkey')
     else:
-        key=parser.get(sensor_id, 'netkey')    
+        key=parser.get(sensor_id, 'netkey')
 
     return key
 
 def decrypt_appmsg(dev_addr, seq_nbr, appmsg):
-    len_appmsg = len(appmsg) 
+    len_appmsg = len(appmsg)
     msg_pad = bytearray(appmsg)
     if len_appmsg < 16:
         i = len(appmsg)
         while i < 16:
             msg_pad.append(0x0)
             i+=1
-    
+
     aBlock = bytearray("\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
 
     aBlock[5] = int(DIR);
@@ -49,14 +49,14 @@ def decrypt_appmsg(dev_addr, seq_nbr, appmsg):
     aBlock[13] = (seq_nbr >> 24) & 0xFF;
     #aBlock[15] = 0;
     aBlock[15] = 1;
-    
+
     IV = '\x00' * 16
     mode = AES.MODE_CBC
     app_key = get_key('Semtech_Sensor', 'AppKey')
     decryptor = AES.new(str(app_key.decode('hex')), mode, IV=IV)
     sBlock = decryptor.encrypt(str(aBlock))
     sBlock_array = bytearray(sBlock)
-    
+
     i = 0;
     unencryptedmsg = bytearray()
     while i < len_appmsg:
@@ -78,14 +78,14 @@ def main():
     4-11 Gateway unique identifier (MAC address)
     12-end JSON object, starting with {, ending with }, see section 4
 
-    Size (Bytes):     1      |   1 ~ M     |  4 
+    Size (Bytes):     1      |   1 ~ M     |  4
     PHY Payload	: MAC Header | MAC Payload | MIC
-   
+
     Bit#	:     7..5     |    4..2   | 1..0
     MAC Header	: Message Type |    RFU    | Major
 
     Size (Bytes) :    7..23     |   0..1     |    0..N
-    MAC Playload : Frame Header | Port Field | Frame Payload  
+    MAC Playload : Frame Header | Port Field | Frame Payload
 
     * Port Field: 0 - Network Session Key; 1 - Application Session Key
 
@@ -93,12 +93,20 @@ def main():
     Frame Header : Device Address | Frame Control | Frame Counter | Frame Options
 
     Size (Bytes)  :          7         |     6     |  5  |     4    |   3..0
-    Frame Control : Adaptive Data Rate | ADRACKReq | ACK | FPending | FOptsLen 
+    Frame Control : Adaptive Data Rate | ADRACKReq | ACK | FPending | FOptsLen
     """
     print "Waiting LoRa messages ..."
     while True:
-        data, addr = sock.recvfrom(4096) # buffer size is 1024 bytes 
-        if len(data) > 12: 
+        data, addr = sock.recvfrom(4096) # buffer size is 1024 bytes
+        if len(data) > 12:
+
+            #bdata = struct.unpack("!BBBBBBBBBBBB", buffer(data[0:12]))
+	    #print "Protocol Version : %X" % bdata[0]
+            #print "Random Token     : %X" % ((bdata[1] << 8) | bdata[2])
+	    #print "PUSH Data ID     : %X" % bdata[3]
+	    #GatewayID = (bdata[4] << 56) | (bdata[5] << 48) | (bdata[6] << 40) | (bdata[7] << 32) | (bdata[8] << 24) | (bdata[9] << 16) | (bdata[10] << 8) | bdata[11]
+	    #print "Gateway ID       : %X" % GatewayID
+
             json_data = data[12:]
             ojson = json.loads(json_data)
             #print ojson
@@ -113,15 +121,15 @@ def main():
                         #print "MAC MSG: ",
                         #for i in msg:
                         #    print "%02x" % (ord(i)),
-                        #print "" 
+                        #print ""
                         byte_msg = bytearray(msg)
                         rx_dev_addr = (byte_msg[4] << 24) | (byte_msg[3] << 16) | byte_msg[2] << 8 | byte_msg[1]
                         seq_nbr =   byte_msg[7] << 8 | byte_msg[6]
                         appmsg = msg[9:-4]
-                        #print "APP MSG: ", 
+                        #print "APP MSG: ",
                         #for i in appmsg:
                         #    print "%02x" % (ord(i)),
-                        #print "" 
+                        #print ""
                         fpappmsg = decrypt_appmsg(rx_dev_addr, seq_nbr, appmsg)
 			#mqtt_msg = msg2string(str(fpappmsg))
 
@@ -136,7 +144,7 @@ def main():
 			#print "TS: %s" % ts
 			#print "RSSI: %s" % rssi
 			mqtt_msg = "{\"Mote ID\":\"%x" % id + "\",\"ts\":\"%s" % ts + "\",\"RSSI\":\"%s" % rssi + msg2string(str(fpappmsg))
-			
+
 			#print mqtt_msg
 			"""
 			MQTT publishing
@@ -145,8 +153,8 @@ def main():
 			mqttc.connect("10.44.39.155", 1883)
 			mqttc.publish("lora/sensor", mqtt_msg)
 			mqttc.loop(2)
-            except:  
-                print "Something went wrong!" 
+            except:
+                print "Something went wrong!"
 
 if __name__ == "__main__":
     sys.exit(main())
