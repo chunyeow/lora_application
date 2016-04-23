@@ -9,8 +9,8 @@ from datetime import tzinfo, timedelta, datetime
 from ConfigParser import SafeConfigParser
 execfile("loramote_msg2string.py")
 
-UDP_IP = "127.0.0.1"
-UDP_PORT = 1780
+UDP_IP = "192.168.88.100"
+UDP_PORT = 1700
 
 DIR=0 # UPLINK
 
@@ -109,7 +109,7 @@ def main():
 
             json_data = data[12:]
             ojson = json.loads(json_data)
-            #print ojson
+            print ojson
             try:
                 for p in ojson["rxpk"]:
                     msg = base64.b64decode(p["data"])
@@ -136,7 +136,7 @@ def main():
 			"""
 			Get some valuable value
 			"""
-			ts = ojson['rxpk'][0]['time']
+			ts = ojson['rxpk'][0]['tmst']
 			rssi = ojson['rxpk'][0]['rssi']
 			devaddr = struct.unpack("!BBBB", buffer(msg[1:5]))
 			id = (devaddr[3] << 24) | (devaddr[2] << 16) | (devaddr[1] << 8) | devaddr[0]
